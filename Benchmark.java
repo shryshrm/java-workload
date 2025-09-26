@@ -71,13 +71,37 @@ public class Benchmark {
     static void cpuWork(int ops) {
         for (int i = 0; i < ops; i++) {
             Histogram.Timer timer = workloadLatency.labels("cpu_java").startTimer();
-            // Pick random duration between 5–10 ms
             double durationMs = 2.5 + (double)(random.nextDouble() * 2.5);
             long burnIterations = (long) (250_000 * durationMs);
 
             double x = 0;
             for (long j = 0; j < burnIterations; j++) {
                 x += Math.sqrt(1000);
+            }
+            timer.observeDuration();
+            workloadOps.labels("cpu_java").inc();
+        }
+        double heapUsedKb = getHeapUsedKb();
+
+        workloadHeap.labels("cpu_java").observe(heapUsedKb);
+    }
+
+    static void constIterCpuWork(int ops) {
+        for (int i = 0; i < ops; i++) {
+            Histogram.Timer timer = workloadLatency.labels("cpu_java").startTimer();
+            // Pick random duration between 5–10 ms
+            double durationMs = 2.5 + (double)(random.nextDouble() * 2.5);
+            long burnIterations = 1000000;
+            double x = 0;
+
+            // Example array of numbers
+            double[] values = {100, 200, 300, 400, 500, 600, 700, 800, 900, 1000};
+            Random rand = new Random();
+
+            for (long j = 0; j < burnIterations; j++) {
+                // Pick a random number from the array
+                double r = values[rand.nextInt(values.length)];
+                x += Math.sqrt(r);
             }
             timer.observeDuration();
             workloadOps.labels("cpu_java").inc();
@@ -109,12 +133,17 @@ public class Benchmark {
             Histogram.Timer timer = workloadLatency.labels("cpu_io_java").startTimer();
             if (random.nextDouble() < ratio) {
                 // CPU
-                double durationMs = 2.5 + (double)(random.nextDouble() * 2.5);
-                long burnIterations = (long) (250_000 * durationMs);
-
+                long burnIterations = 1000000;
                 double x = 0;
+
+                // Example array of numbers
+                double[] values = {100, 200, 300, 400, 500, 600, 700, 800, 900, 1000};
+                Random rand = new Random();
+
                 for (long j = 0; j < burnIterations; j++) {
-                    x += Math.sqrt(1000);
+                    // Pick a random number from the array
+                    double r = values[rand.nextInt(values.length)];
+                    x += Math.sqrt(r);
                 }
             } else {
                 // IO
@@ -154,7 +183,7 @@ public class Benchmark {
             for (int i = 0; i < workers; i++) {
 //                pool.submit(() -> {
                     switch (type) {
-                        case "cpu" -> cpuWork(opsPerWorker);
+                        case "cpu" -> constIterCpuWork(opsPerWorker);
                         case "io" -> ioWork(opsPerWorker);
                         case "cpu_io" -> cpuIoWork(opsPerWorker, ratio);
                     }
